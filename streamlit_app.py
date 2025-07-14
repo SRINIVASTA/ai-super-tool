@@ -3,7 +3,6 @@ import os
 from PIL import Image
 import io
 import google.generativeai as genai
-from moviepy.editor import VideoFileClip
 import pypdf
 import docx
 import pandas as pd
