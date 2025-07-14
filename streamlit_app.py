@@ -1,71 +1,71 @@
 import streamlit as st
-from ai_tools import ask_a_question, translate_text, generate_python_code, summarize_text
-from file_analyzer import extract_content_from_file
-from google_search import google_cse_search
-from image_generator import generate_image_from_prompt
+import requests
+import google.generativeai as genai
 
-st.title("AI Super Tool")
+# Sidebar for API key inputs
+st.sidebar.title("Enter Your API Keys")
 
-tool = st.sidebar.selectbox("Choose an AI Tool", [
-    "Ask a Question",
-    "Translate Text",
-    "Generate Python Code",
-    "Summarize Text",
-    "Analyze Uploaded File",
-    "Google Search",
-    "Generate AI Image"
-])
+GOOGLE_API_KEY = st.sidebar.text_input("Google API Key", type="password")
+GOOGLE_CSE_ID = st.sidebar.text_input("Google CSE ID", type="password")
+GEMINI_API_KEY = st.sidebar.text_input("Gemini API Key", type="password")
 
-if tool == "Ask a Question":
-    query = st.text_input("Enter your question:")
-    if st.button("Ask"):
-        answer = ask_a_question(query)
-        st.write(answer)
+# Stop if any keys are missing
+if not (GOOGLE_API_KEY and GOOGLE_CSE_ID and GEMINI_API_KEY):
+    st.warning("Please enter all API keys in the sidebar to continue.")
+    st.stop()
 
-elif tool == "Translate Text":
-    text = st.text_area("Text to translate:")
-    lang = st.selectbox("Target language:", ["Spanish", "French", "German", "Japanese", "Italian"])
-    if st.button("Translate"):
-        translation = translate_text(text, lang)
-        st.write(translation)
+# Configure Gemini AI with entered API key
+try:
+    genai.configure(api_key=GEMINI_API_KEY)
+    model = genai.GenerativeModel('gemini-1.5-flash')
+except Exception as e:
+    st.error(f"Error configuring Gemini AI: {e}")
+    st.stop()
 
-elif tool == "Generate Python Code":
-    task = st.text_area("Describe the task for Python code:")
-    if st.button("Generate Code"):
-        code = generate_python_code(task)
-        st.code(code, language='python')
+# Function for Google Custom Search
+def google_cse_search(query, num_results=3):
+    params = {
+        "key": GOOGLE_API_KEY,
+        "cx": GOOGLE_CSE_ID,
+        "q": query,
+        "num": num_results
+    }
+    response = requests.get("https://www.googleapis.com/customsearch/v1", params=params)
+    data = response.json()
 
-elif tool == "Summarize Text":
-    text = st.text_area("Text to summarize:")
-    if st.button("Summarize"):
-        summary = summarize_text(text)
-        st.write(summary)
+    if "items" not in data:
+        return f"❌ Error: {data.get('error', {}).get('message', 'No results')}"
 
-elif tool == "Analyze Uploaded File":
-    uploaded_file = st.file_uploader("Upload a file")
-    analysis_request = st.text_area("What analysis do you want on the file?")
-    if uploaded_file and st.button("Analyze"):
-        with open(uploaded_file.name, "wb") as f:
-            f.write(uploaded_file.getbuffer())
-        content, error = extract_content_from_file(uploaded_file.name)
-        if error:
-            st.error(error)
+    results = []
+    for item in data["items"]:
+        title = item.get("title")
+        snippet = item.get("snippet")
+        link = item.get("link")
+        results.append(f"🔹 **{title}**\n{snippet}\n🔗 {link}\n")
+
+    return "\n".join(results)
+
+# --- UI Tabs for different tools ---
+
+tab = st.sidebar.radio("Select Tool", ["Ask AI", "Google Search"])
+
+if tab == "Ask AI":
+    question = st.text_area("Ask a question to Gemini AI:")
+    if st.button("Get Answer"):
+        if question.strip():
+            prompt = f"Please provide a clear and well-explained answer to the following question: {question}"
+            response = model.generate_content(prompt)
+            st.markdown("### AI Answer:")
+            st.write(response.text)
         else:
-            st.text_area("Extracted content preview:", content[:1000])
-            st.success("File content extracted successfully.")
+            st.warning("Please enter a question.")
 
-elif tool == "Google Search":
-    query = st.text_input("Search query:")
+elif tab == "Google Search":
+    query = st.text_input("Enter your Google search query:")
     if st.button("Search"):
-        results = google_cse_search(query)
-        st.markdown(results)
-
-elif tool == "Generate AI Image":
-    prompt = st.text_input("Image prompt:")
-    style = st.selectbox("Style", ["None", "Photorealistic", "Cartoon", "Oil Painting", "Fantasy"])
-    aspect_ratio = st.selectbox("Aspect Ratio", [
-        "Square (1:1)", "Landscape (16:9)", "Portrait (9:16)", "Standard (4:3)", "Widescreen (21:9)"
-    ])
-    if st.button("Generate Image"):
-        image = generate_image_from_prompt(prompt, style, aspect_ratio)
-        st.image(image)
+        if query.strip():
+            results = google_cse_search(query)
+            st.markdown("### Search Results:")
+            st.markdown(results)
+        else:
+            st.warning("Please enter a search query.")
