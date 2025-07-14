@@ -1,13 +1,18 @@
 import streamlit as st
 import os
 from PIL import Image
+import io
 import google.generativeai as genai
-# from moviepy.editor import VideoFileClip  # Make sure moviepy is installed if you use video features
+# from moviepy.editor import VideoFileClip  # Keep if you use video features; else remove
 import pypdf
 import docx
 import pandas as pd
+from pdf2image import convert_from_path
+import pytesseract
 
-# ------------- API Setup ---------------
+# ---------------------------
+# Configure API keys & model
+# ---------------------------
 
 API_KEY = st.sidebar.text_input("Enter Google / Gemini API Key", type="password")
 GOOGLE_CSE_ID = st.sidebar.text_input("Enter Google CSE ID (optional)", type="password")
@@ -19,7 +24,9 @@ if not API_KEY:
 genai.configure(api_key=API_KEY)
 model = genai.GenerativeModel('gemini-1.5-flash')
 
-# ------------- Helper functions ------------
+# ---------------------------
+# Helper Functions
+# ---------------------------
 
 def extract_content_from_file(file_path):
     content = ""
@@ -29,7 +36,14 @@ def extract_content_from_file(file_path):
         if ext == '.pdf':
             reader = pypdf.PdfReader(file_path)
             for page in reader.pages:
-                content += (page.extract_text() or "")
+                text = page.extract_text()
+                if text:
+                    content += text
+            if not content:
+                # Fallback to OCR for scanned PDFs
+                images = convert_from_path(file_path)
+                for image in images:
+                    content += pytesseract.image_to_string(image)
         elif ext == '.docx':
             doc = docx.Document(file_path)
             for para in doc.paragraphs:
@@ -44,7 +58,7 @@ def extract_content_from_file(file_path):
                 content = f.read()
         else:
             return None, f"Unsupported file type: {ext}"
-        if not content.strip():
+        if not content:
             return None, "No text could be extracted from the file."
         return content, None
     except Exception as e:
@@ -65,14 +79,16 @@ def summarize_text(text):
     response = model.generate_content(prompt)
     return response.text
 
-# ------------- Streamlit UI --------------
+# ---------------------------------
+# Streamlit UI
+# ---------------------------------
 
 st.title("🚀 AI Super Tool - Gemini + File Analysis + Image Gen")
 
-tabs = st.tabs(["AI Text Tools", "File Analysis", "Image Generation"])
+tab = st.tabs(["AI Text Tools", "File Analysis", "Image Generation"])
 
-# -- AI Text Tools Tab --
-with tabs[0]:
+# --- Tab 1: AI Text Tools ---
+with tab[0]:
     st.header("Ask AI a Question")
     question = st.text_area("Enter your question here:")
     if st.button("Ask AI"):
@@ -108,8 +124,8 @@ with tabs[0]:
         else:
             st.warning("Please enter some text.")
 
-# -- File Analysis Tab --
-with tabs[1]:
+# --- Tab 2: File Analysis ---
+with tab[1]:
     st.header("Upload a file for AI analysis")
     uploaded_file = st.file_uploader("Choose file", type=["pdf", "docx", "xlsx", "csv", "txt"])
 
@@ -130,16 +146,15 @@ with tabs[1]:
 
             if st.button("Analyze with AI"):
                 with st.spinner("Analyzing file with AI..."):
-                    prompt = f"{analysis_request}\n\n{content}"
-                    response = model.generate_content(prompt)
+                    response = model.generate_content(f"{analysis_request}\n\nFile Content:\n{content}")
                 st.subheader("AI Analysis Result:")
                 st.write(response.text)
 
         # Clean up temp file
         os.remove(temp_file_path)
 
-# -- Image Generation Tab --
-with tabs[2]:
+# --- Tab 3: Image Generation ---
+with tab[2]:
     st.header("Generate an Image")
 
     prompt = st.text_input("Image prompt", "A majestic lion sitting on a throne, fantasy art")
@@ -147,6 +162,7 @@ with tabs[2]:
                                            "Steampunk", "Vintage", "Minimalist", "Fantasy", "Abstract", "Anime", "Impressionism"])
     aspect_ratio = st.selectbox("Aspect Ratio", ["Square (1:1)", "Landscape (16:9)", "Portrait (9:16)", "Standard (4:3)", "Widescreen (21:9)"])
 
+    # Map aspect ratio to dimensions
     aspect_dims = {
         "Square (1:1)": (512, 512),
         "Landscape (16:9)": (768, 432),
