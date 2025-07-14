@@ -13,6 +13,5 @@ transformers
 accelerate
 invisible_watermark
 safetensors
-torch==2.0.1+cpu -f https://download.pytorch.org/whl/cpu/torch_stable.html
 requests
 ipywidgets
