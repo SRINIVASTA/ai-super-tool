@@ -2,7 +2,7 @@ import streamlit as st
 import os
 from PIL import Image
 import google.generativeai as genai
-from moviepy.editor import VideoFileClip  # Make sure moviepy is installed if you use video features
+# from moviepy.editor import VideoFileClip  # Make sure moviepy is installed if you use video features
 import pypdf
 import docx
 import pandas as pd
