@@ -7,7 +7,11 @@ st.sidebar.title("Enter Your API Key")
 API_KEY = st.sidebar.text_input("Google / Gemini API Key", type="password")
 
 # Also need Google CSE ID for search (separate)
-GOOGLE_CSE_ID = st.sidebar.text_input("Google CSE ID")
+st.sidebar.title("Enter Your CSE ID")
+GOOGLE_CSE_ID = st.sidebar.text_input("Google CSE ID", type="password")
+
+
+
 
 if not API_KEY or not GOOGLE_CSE_ID:
     st.warning("Please enter both the API key and the Google CSE ID in the sidebar.")
