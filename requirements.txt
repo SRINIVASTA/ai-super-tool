@@ -1,0 +1,16 @@
+streamlit
+google-generativeai
+pandas
+openpyxl
+pypdf
+python-docx
+Pillow
+moviepy
+diffusers
+transformers
+accelerate
+invisible_watermark
+safetensors
+torch
+requests
+ipywidgets
