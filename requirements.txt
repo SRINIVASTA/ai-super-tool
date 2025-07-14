@@ -5,14 +5,11 @@ openpyxl
 pypdf
 python-docx
 Pillow
-moviepy
-imageio
-imageio-ffmpeg
 diffusers
 transformers
 accelerate
 invisible_watermark
 safetensors
-torch==2.0.1+cpu
 requests
 ipywidgets
+moviepy
