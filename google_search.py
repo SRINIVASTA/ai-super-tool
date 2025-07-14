@@ -1,10 +1,12 @@
 import requests
-from google.colab import userdata
+import streamlit as st
 
-GOOGLE_API_KEY = userdata.get('GOOGLE_API_KEY')
-GOOGLE_CSE_ID = userdata.get('GOOGLE_CSE_ID')
+# Load credentials from .streamlit/secrets.toml
+GOOGLE_API_KEY = st.secrets["general"]["GOOGLE_API_KEY"]
+GOOGLE_CSE_ID = st.secrets["general"]["GOOGLE_CSE_ID"]
 
 def google_cse_search(query, num_results=3):
+    """Performs a Google Custom Search and returns formatted results."""
     params = {
         "key": GOOGLE_API_KEY,
         "cx": GOOGLE_CSE_ID,
