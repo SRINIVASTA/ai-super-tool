@@ -13,3 +13,6 @@ safetensors
 requests
 ipywidgets
 moviepy
+pytesseract
+pdf2image
+
