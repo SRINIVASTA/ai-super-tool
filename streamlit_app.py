@@ -2,30 +2,52 @@ import streamlit as st
 import requests
 import google.generativeai as genai
 
-# Sidebar for API key inputs
-st.sidebar.title("Enter Your API Keys")
+# Sidebar: Enter only one API key
+st.sidebar.title("Enter Your API Key")
+API_KEY = st.sidebar.text_input("Google / Gemini API Key", type="password")
 
-GOOGLE_API_KEY = st.sidebar.text_input("Google API Key", type="password")
-GOOGLE_CSE_ID = st.sidebar.text_input("Google CSE ID", type="password")
-GEMINI_API_KEY = st.sidebar.text_input("Gemini API Key", type="password")
+# Also need Google CSE ID for search (separate)
+GOOGLE_CSE_ID = st.sidebar.text_input("Google CSE ID")
 
-# Stop if any keys are missing
-if not (GOOGLE_API_KEY and GOOGLE_CSE_ID and GEMINI_API_KEY):
-    st.warning("Please enter all API keys in the sidebar to continue.")
+if not API_KEY or not GOOGLE_CSE_ID:
+    st.warning("Please enter both the API key and the Google CSE ID in the sidebar.")
     st.stop()
 
-# Configure Gemini AI with entered API key
+# Configure Gemini AI with the single API key
 try:
-    genai.configure(api_key=GEMINI_API_KEY)
+    genai.configure(api_key=API_KEY)
     model = genai.GenerativeModel('gemini-1.5-flash')
 except Exception as e:
     st.error(f"Error configuring Gemini AI: {e}")
     st.stop()
 
-# Function for Google Custom Search
+# Define Gemini AI functions (same as before)
+
+def ask_a_question(query):
+    prompt = f"Please provide a clear and well-explained answer to the following question: {query}"
+    response = model.generate_content(prompt)
+    return response.text
+
+def translate_text(text, target_language):
+    prompt = f"Translate the following text to {target_language}. Only provide the translated text: '{text}'"
+    response = model.generate_content(prompt)
+    return response.text
+
+def generate_python_code(task_description):
+    prompt = f"""Generate a complete, well-commented Python script for the following task. Do not include any explanations outside of the code comments. Task: {task_description}"""
+    response = model.generate_content(prompt)
+    code_block = response.text.replace("```python", "").replace("```", "").strip()
+    return code_block
+
+def summarize_text(text):
+    prompt = f"Please provide a short and simple summary of the following:\n\n{text}"
+    response = model.generate_content(prompt)
+    return response.text
+
+# Google Custom Search using same API_KEY + CSE ID
 def google_cse_search(query, num_results=3):
     params = {
-        "key": GOOGLE_API_KEY,
+        "key": API_KEY,
         "cx": GOOGLE_CSE_ID,
         "q": query,
         "num": num_results
@@ -45,23 +67,58 @@ def google_cse_search(query, num_results=3):
 
     return "\n".join(results)
 
-# --- UI Tabs for different tools ---
+# UI
+tool = st.sidebar.selectbox("Select AI Tool", [
+    "Ask a Question",
+    "Translate Text",
+    "Generate Python Code",
+    "Summarize Text",
+    "Google Search"
+])
 
-tab = st.sidebar.radio("Select Tool", ["Ask AI", "Google Search"])
-
-if tab == "Ask AI":
-    question = st.text_area("Ask a question to Gemini AI:")
+if tool == "Ask a Question":
+    question = st.text_area("Enter your question:")
     if st.button("Get Answer"):
         if question.strip():
-            prompt = f"Please provide a clear and well-explained answer to the following question: {question}"
-            response = model.generate_content(prompt)
+            answer = ask_a_question(question)
             st.markdown("### AI Answer:")
-            st.write(response.text)
+            st.write(answer)
         else:
             st.warning("Please enter a question.")
 
-elif tab == "Google Search":
-    query = st.text_input("Enter your Google search query:")
+elif tool == "Translate Text":
+    text_to_translate = st.text_area("Enter text to translate:")
+    target_language = st.selectbox("Target Language", ["Spanish", "French", "German", "Japanese", "Italian"])
+    if st.button("Translate"):
+        if text_to_translate.strip():
+            translation = translate_text(text_to_translate, target_language)
+            st.markdown(f"### Translation to {target_language}:")
+            st.write(translation)
+        else:
+            st.warning("Please enter text to translate.")
+
+elif tool == "Generate Python Code":
+    task_description = st.text_area("Describe the Python coding task:")
+    if st.button("Generate Code"):
+        if task_description.strip():
+            code = generate_python_code(task_description)
+            st.markdown("### Generated Python Code:")
+            st.code(code, language='python')
+        else:
+            st.warning("Please describe the coding task.")
+
+elif tool == "Summarize Text":
+    text_to_summarize = st.text_area("Enter text to summarize:")
+    if st.button("Summarize"):
+        if text_to_summarize.strip():
+            summary = summarize_text(text_to_summarize)
+            st.markdown("### Summary:")
+            st.write(summary)
+        else:
+            st.warning("Please enter text to summarize.")
+
+elif tool == "Google Search":
+    query = st.text_input("Enter Google search query:")
     if st.button("Search"):
         if query.strip():
             results = google_cse_search(query)
